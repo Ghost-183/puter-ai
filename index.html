@@ -1,144 +1,183 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Analyzer</title>
+    <script src="https://js.puter.com/v2/"></script>
 
-  <title>Claude Opus 4.7</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
 
-  <script src="https://js.puter.com/v2/"></script>
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
 
-  <style>
-    body{
-      background:#0f172a;
-      color:white;
-      font-family:Arial;
-      padding:20px;
-    }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-    textarea{
-      width:100%;
-      height:120px;
-      border:none;
-      border-radius:12px;
-      padding:12px;
-      background:#1e293b;
-      color:white;
-      font-size:16px;
-    }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background: #f8f9fa;
+        }
 
-    button{
-      width:100%;
-      padding:14px;
-      margin-top:12px;
-      border:none;
-      border-radius:12px;
-      background:#38bdf8;
-      color:black;
-      font-size:16px;
-      font-weight:bold;
-    }
+        input { display: none; }
 
-    #output{
-      margin-top:20px;
-      white-space:pre-wrap;
-      background:#111827;
-      padding:15px;
-      border-radius:12px;
-      line-height:1.5;
-    }
-  </style>
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:disabled { background: #ccc; }
+
+        #response {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>Claude Opus 4.7</h2>
+<div class="container">
+    <h1>Resume Analyzer</h1>
 
-<textarea
-id="prompt"
-placeholder="Type message..."></textarea>
+    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        Click or drop resume here
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt">
+    </div>
 
-<button onclick="chat()">Send</button>
+    <div class="file-name" id="fileName"></div>
 
-<div id="output"></div>
+    <button id="analyzeBtn" disabled>Analyze</button>
+
+    <div id="response"></div>
+</div>
 
 <script>
-async function chat() {
 
-  const output =
-    document.getElementById("output");
+let fileData = null;
 
-  const prompt =
-    document.getElementById("prompt").value;
+const fileInput = document.getElementById("fileInput");
+const fileName = document.getElementById("fileName");
+const btn = document.getElementById("analyzeBtn");
+const response = document.getElementById("response");
+const uploadArea = document.querySelector(".upload-area");
 
-  output.innerText = "Thinking...";
+fileInput.onchange = e => setFile(e.target.files[0]);
 
-  try {
+uploadArea.ondragover = e => {
+    e.preventDefault();
+    uploadArea.classList.add("dragover");
+};
 
-    // Login once
-    try {
-      await puter.auth.getUser();
-    } catch {
-      await puter.auth.signIn();
-    }
+uploadArea.ondragleave = () => {
+    uploadArea.classList.remove("dragover");
+};
 
-    // CLAUDE OPUS 4.7
-    const response = await puter.ai.chat(
-      prompt,
-      {
-        model: "claude-opus-4-7"
-      }
-    );
+uploadArea.ondrop = e => {
+    e.preventDefault();
+    uploadArea.classList.remove("dragover");
+    setFile(e.dataTransfer.files[0]);
+};
 
-    console.log(response);
-
-    // Fix object output
-    let text = "";
-
-    if (typeof response === "string") {
-      text = response;
-    }
-
-    else if (response?.message?.content) {
-
-      if (Array.isArray(response.message.content)) {
-
-        text = response.message.content
-          .map(part => part.text || "")
-          .join("");
-
-      } else {
-
-        text = response.message.content;
-
-      }
-    }
-
-    else if (response?.text) {
-
-      text = response.text;
-
-    }
-
-    else {
-
-      text = JSON.stringify(
-        response,
-        null,
-        2
-      );
-    }
-
-    output.innerText = text;
-
-  } catch(err) {
-
-    output.innerText =
-      "Error:\n" + err.message;
-
-    console.error(err);
-  }
+function setFile(file){
+    fileData = file;
+    fileName.innerText = "Selected: " + file.name;
+    btn.disabled = false;
 }
+
+btn.onclick = async () => {
+
+    btn.disabled = true;
+    btn.innerText = "Analyzing...";
+    response.style.display = "none";
+    response.innerText = "";
+
+    try {
+
+        await puter.auth.getUser().catch(() => puter.auth.signIn());
+
+        const uploaded = await puter.fs.write(
+            "resume_" + Date.now() + "." + fileData.name.split(".").pop(),
+            fileData
+        );
+
+        const stream = await puter.ai.chat([
+            {
+                role: "user",
+                content: [
+                    { type: "file", puter_path: uploaded.path },
+                    { type: "text", text: "Analyze this resume in 2-3 short sentences." }
+                ]
+            }
+        ], {
+            model: "anthropic/claude-opus-4-7",
+            stream: true
+        });
+
+        let finalText = "";
+
+        for await (const chunk of stream) {
+
+            // 🔥 FIX: safely extract text ONLY
+            let textPart = "";
+
+            if (typeof chunk === "string") {
+                textPart = chunk;
+            }
+            else if (chunk?.text) {
+                textPart = chunk.text;
+            }
+            else if (chunk?.message?.content) {
+                textPart = Array.isArray(chunk.message.content)
+                    ? chunk.message.content.map(x => x.text || "").join("")
+                    : chunk.message.content;
+            }
+
+            finalText += textPart;
+
+            response.style.display = "block";
+            response.innerText = finalText; // ❌ never object
+        }
+
+        await puter.fs.delete(uploaded.path);
+
+    } catch (err) {
+        response.style.display = "block";
+        response.innerText = "Error: " + (err?.message || err);
+    }
+
+    btn.disabled = false;
+    btn.innerText = "Analyze";
+};
+
 </script>
 
 </body>
