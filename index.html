@@ -1,184 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Claude Opus 4-7 Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Opus 4.7 Workspace</title>
+    <!-- Puter.js SDK -->
     <script src="https://js.puter.com/v2/"></script>
-
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: white;
-            display: flex;
-            height: 100vh;
-        }
-
-        #sidebar {
-            width: 25%;
-            background: #111827;
-            padding: 10px;
-            overflow-y: auto;
-        }
-
-        #chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #messages {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
-        }
-
-        .msg {
-            margin: 8px 0;
-            padding: 10px;
-            border-radius: 8px;
-            white-space: pre-wrap;
-        }
-
-        .user { background: #2563eb; }
-        .ai { background: #374151; }
-
-        #inputArea {
-            display: flex;
-            padding: 10px;
-            gap: 5px;
-            background: #1e293b;
-        }
-
-        input, button {
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
-        }
-
-        input {
-            flex: 1;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .fileBtn { background: #22c55e; color: white; }
-
-        .small { font-size: 12px; color: #aaa; margin-top: 10px; }
+        .chat-container { height: calc(100vh - 160px); }
+        .artifact-pane { border-left: 1px solid #e5e7eb; }
+        pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .message-user { background: #f3f4f6; align-self: flex-end; }
+        .message-assistant { background: #ffffff; border: 1px solid #e5e7eb; align-self: flex-start; }
     </style>
 </head>
+<body class="bg-gray-50 text-gray-900 font-sans">
 
-<body>
+    <!-- Header -->
+    <header class="flex items-center justify-between px-6 py-4 bg-white shadow-sm">
+        <div class="flex items-center gap-2">
+            <span class="text-xl font-bold text-orange-600">Claude</span>
+            <span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded">Opus 4.7</span>
+        </div>
+        <div class="text-sm text-gray-500">Puter Cloud API Interface</div>
+    </header>
 
-<div id="sidebar">
-    <h3>Files</h3>
-    <button onclick="document.getElementById('fileInput').click()">+ Add Files</button>
-    <input type="file" id="fileInput" multiple />
-    <div id="fileList" class="small"></div>
-</div>
+    <!-- Main Workspace -->
+    <main class="flex h-[calc(100vh-73px)]">
+        
+        <!-- Left: Chat Pane -->
+        <section class="flex-1 flex flex-col p-4 md:p-6 max-w-3xl mx-auto w-full">
+            <div id="chat-history" class="chat-container overflow-y-auto flex flex-col gap-4 mb-4 pr-2">
+                <!-- Welcome Message -->
+                <div class="message-assistant p-4 rounded-2xl max-w-[85%]">
+                    Hello! I am Claude Opus 4.7. How can I help you today? You can attach files or ask me to write code, which I'll display in the side pane.
+                </div>
+            </div>
 
-<div id="chat">
-    <div id="messages"></div>
+            <!-- Input Area -->
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
+                <div id="file-preview" class="flex gap-2 p-2 hidden"></div>
+                <div class="flex items-end gap-2">
+                    <label class="p-3 cursor-pointer hover:bg-gray-100 rounded-xl transition">
+                        <input type="file" id="file-input" class="hidden" multiple>
+                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    </label>
+                    <textarea id="user-input" rows="1" class="flex-1 p-3 focus:outline-none resize-none" placeholder="Message Claude..."></textarea>
+                    <button id="send-btn" class="bg-black text-white p-3 rounded-xl hover:bg-gray-800 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
 
-    <div id="inputArea">
-        <input id="text" placeholder="Type your message..." />
-        <button onclick="send()">Send</button>
-    </div>
-</div>
+        <!-- Right: Side Pane (Artifacts/Preview) -->
+        <aside id="side-pane" class="hidden md:flex flex-1 flex-col bg-white artifact-pane">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="font-semibold text-gray-700">Artifacts & Files</h2>
+                <button onclick="document.getElementById('side-pane').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div id="artifact-content" class="p-6 overflow-y-auto">
+                <div class="text-center text-gray-400 mt-20">
+                    Code, documents, and complex data will appear here side-by-side.
+                </div>
+            </div>
+        </aside>
+    </main>
 
-<script>
-let chatHistory = [];
-let uploadedFiles = [];
+    <script>
+        const chatHistory = document.getElementById('chat-history');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const fileInput = document.getElementById('file-input');
+        const artifactContent = document.getElementById('artifact-content');
+        const sidePane = document.getElementById('side-pane');
 
-const messages = document.getElementById("messages");
-const fileInput = document.getElementById("fileInput");
-const fileList = document.getElementById("fileList");
+        let messages = [];
+        let attachedFiles = [];
 
-fileInput.onchange = async (e) => {
-    for (let file of e.target.files) {
-        const uploaded = await puter.fs.write(
-            "file_" + Date.now() + "_" + file.name,
-            file
-        );
-        uploadedFiles.push(uploaded.path);
-    }
-    renderFiles();
-};
+        // Handle File Selection
+        fileInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
 
-function renderFiles(){
-    fileList.innerHTML = uploadedFiles
-        .map(f => "📎 " + f.split("/").pop())
-        .join("<br>");
-}
+            // Upload files to Puter's temporary storage
+            const uploaded = await puter.fs.upload(files);
+            const fileArr = Array.isArray(uploaded) ? uploaded : [uploaded];
+            
+            fileArr.forEach(f => {
+                attachedFiles.push({ type: 'file', puter_path: f.path, name: f.name });
+                const chip = document.createElement('div');
+                chip.className = "bg-gray-100 px-3 py-1 rounded-full text-xs flex items-center gap-2 border";
+                chip.innerHTML = `<span>${f.name}</span>`;
+                document.getElementById('file-preview').classList.remove('hidden');
+                document.getElementById('file-preview').appendChild(chip);
+            });
+        });
 
-function addMsg(role, text){
-    const div = document.createElement("div");
-    div.className = "msg " + role;
-    div.innerText = text;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-}
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text && attachedFiles.length === 0) return;
 
-async function send(){
-    const input = document.getElementById("text");
-    const text = input.value.trim();
-    if(!text && uploadedFiles.length === 0) return;
-    input.value = "";
+            // 1. Update UI (User Message)
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = "message-user p-4 rounded-2xl max-w-[85%] shadow-sm";
+            userMsgDiv.textContent = text;
+            chatHistory.appendChild(userMsgDiv);
+            
+            // Prepare message content (Multimodal)
+            const content = [];
+            if (text) content.push({ type: 'text', text: text });
+            attachedFiles.forEach(f => content.push({ type: 'file', puter_path: f.puter_path }));
+            
+            messages.push({ role: 'user', content: content });
+            
+            // Reset Input
+            userInput.value = '';
+            attachedFiles = [];
+            document.getElementById('file-preview').innerHTML = '';
+            document.getElementById('file-preview').classList.add('hidden');
 
-    addMsg("user", text || "[Files attached]");
+            // 2. Assistant Placeholder
+            const assistantMsgDiv = document.createElement('div');
+            assistantMsgDiv.className = "message-assistant p-4 rounded-2xl max-w-[85%] prose";
+            chatHistory.appendChild(assistantMsgDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
 
-    await puter.auth.getUser().catch(() => puter.auth.signIn());
+            try {
+                // 3. Call Puter AI API (Claude Opus 4.7)
+                const response = await puter.ai.chat(messages, {
+                    model: 'claude-opus-4-7',
+                    stream: true
+                });
 
-    // Build the message content
-    let content = [];
-
-    for(let f of uploadedFiles){
-        content.push({ type: "file", puter_path: f });
-    }
-
-    if(text) content.push({ type: "text", text: text });
-
-    chatHistory.push({ role: "user", content });
-
-    const stream = await puter.ai.chat(chatHistory, {
-        model: "anthropic/claude-opus-4-7",
-        stream: true
-    });
-
-    let reply = "";
-    let lastMsg = document.createElement("div");
-    lastMsg.className = "msg ai";
-    messages.appendChild(lastMsg);
-
-    for await (const chunk of stream) {
-        let t = "";
-
-        if (typeof chunk === "string") t = chunk;
-        else if (chunk?.text) t = chunk.text;
-        else if (chunk?.message?.content) {
-            t = Array.isArray(chunk.message.content)
-                ? chunk.message.content.map(x => x.text || "").join("")
-                : chunk.message.content;
+                let fullText = '';
+                for await (const part of response) {
+                    if (part?.text) {
+                        fullText += part.text;
+                        assistantMsgDiv.innerText = fullText; // Using innerText to show raw stream
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                        
+                        // Detect Code Blocks for Side Pane (Artifacts)
+                        if (fullText.includes('```')) {
+                            sidePane.classList.remove('hidden');
+                            const codeMatch = fullText.match(/
+```([\s\S]*?)```/);
+                            if (codeMatch) {
+                                artifactContent.innerHTML = `<pre><code>${codeMatch[1]}</code></pre>`;
+                            }
+                        }
+                    }
+                }
+                messages.push({ role: 'assistant', content: fullText });
+            } catch (err) {
+                assistantMsgDiv.innerHTML = `<span class="text-red-500">Error: ${err.message}</span>`;
+            }
         }
 
-        reply += t;
-        lastMsg.innerText = reply;  // ✅ no [object Object]
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    chatHistory.push({ role: "assistant", content: reply });
-
-    // Clear uploaded files after sending
-    uploadedFiles = [];
-    renderFiles();
-}
-</script>
-
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
+    </script>
 </body>
 </html>
