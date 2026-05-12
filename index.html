@@ -1,182 +1,199 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Resume Analyzer</title>
+    <title>Multi-File Claude Chat</title>
     <script src="https://js.puter.com/v2/"></script>
 
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
+            margin: 0;
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            height: 100vh;
         }
 
-        .container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 5px;
+        #sidebar {
+            width: 25%;
+            background: #111827;
+            padding: 10px;
+            overflow-y: auto;
         }
 
-        .upload-area {
-            border: 2px dashed #ccc;
-            padding: 40px;
-            text-align: center;
-            margin: 20px 0;
-            border-radius: 5px;
-            cursor: pointer;
+        #chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
-        .upload-area.dragover {
-            border-color: #007bff;
-            background: #f8f9fa;
+        #messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
         }
 
-        input { display: none; }
+        .msg {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .user { background: #2563eb; }
+        .ai { background: #374151; }
+
+        #inputArea {
+            display: flex;
+            padding: 10px;
+            gap: 5px;
+        }
+
+        input, button {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        input {
+            flex: 1;
+        }
 
         button {
-            width: 100%;
-            padding: 10px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            background: #38bdf8;
             cursor: pointer;
         }
 
-        button:disabled { background: #ccc; }
-
-        #response {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            white-space: pre-wrap;
+        #fileInput {
             display: none;
         }
 
-        .file-name {
-            margin-top: 10px;
-            color: #666;
-            font-style: italic;
+        .fileBtn {
+            background: #22c55e;
+        }
+
+        .small {
+            font-size: 12px;
+            color: #aaa;
         }
     </style>
 </head>
 
 <body>
 
-<div class="container">
-    <h1>Resume Analyzer</h1>
+<div id="sidebar">
+    <h3>Files</h3>
+    <button onclick="document.getElementById('fileInput').click()">+ Add Files</button>
+    <input type="file" id="fileInput" multiple />
 
-    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        Click or drop resume here
-        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt">
+    <div id="fileList" class="small"></div>
+</div>
+
+<div id="chat">
+    <div id="messages"></div>
+
+    <div id="inputArea">
+        <input id="text" placeholder="Type message..." />
+        <button onclick="send()">Send</button>
     </div>
-
-    <div class="file-name" id="fileName"></div>
-
-    <button id="analyzeBtn" disabled>Analyze</button>
-
-    <div id="response"></div>
 </div>
 
 <script>
 
-let fileData = null;
+let chatHistory = [];
+let uploadedFiles = [];
 
+const messages = document.getElementById("messages");
 const fileInput = document.getElementById("fileInput");
-const fileName = document.getElementById("fileName");
-const btn = document.getElementById("analyzeBtn");
-const response = document.getElementById("response");
-const uploadArea = document.querySelector(".upload-area");
+const fileList = document.getElementById("fileList");
 
-fileInput.onchange = e => setFile(e.target.files[0]);
-
-uploadArea.ondragover = e => {
-    e.preventDefault();
-    uploadArea.classList.add("dragover");
-};
-
-uploadArea.ondragleave = () => {
-    uploadArea.classList.remove("dragover");
-};
-
-uploadArea.ondrop = e => {
-    e.preventDefault();
-    uploadArea.classList.remove("dragover");
-    setFile(e.dataTransfer.files[0]);
-};
-
-function setFile(file){
-    fileData = file;
-    fileName.innerText = "Selected: " + file.name;
-    btn.disabled = false;
-}
-
-btn.onclick = async () => {
-
-    btn.disabled = true;
-    btn.innerText = "Analyzing...";
-    response.style.display = "none";
-    response.innerText = "";
-
-    try {
-
-        await puter.auth.getUser().catch(() => puter.auth.signIn());
-
+fileInput.onchange = async (e) => {
+    for (let file of e.target.files) {
         const uploaded = await puter.fs.write(
-            "resume_" + Date.now() + "." + fileData.name.split(".").pop(),
-            fileData
+            "file_" + Date.now() + "_" + file.name,
+            file
         );
 
-        const stream = await puter.ai.chat([
-            {
-                role: "user",
-                content: [
-                    { type: "file", puter_path: uploaded.path },
-                    { type: "text", text: "Analyze this resume in 2-3 short sentences." }
-                ]
-            }
-        ], {
-            model: "anthropic/claude-opus-4-7",
-            stream: true
-        });
-
-        let finalText = "";
-
-        for await (const chunk of stream) {
-
-            // 🔥 FIX: safely extract text ONLY
-            let textPart = "";
-
-            if (typeof chunk === "string") {
-                textPart = chunk;
-            }
-            else if (chunk?.text) {
-                textPart = chunk.text;
-            }
-            else if (chunk?.message?.content) {
-                textPart = Array.isArray(chunk.message.content)
-                    ? chunk.message.content.map(x => x.text || "").join("")
-                    : chunk.message.content;
-            }
-
-            finalText += textPart;
-
-            response.style.display = "block";
-            response.innerText = finalText; // ❌ never object
-        }
-
-        await puter.fs.delete(uploaded.path);
-
-    } catch (err) {
-        response.style.display = "block";
-        response.innerText = "Error: " + (err?.message || err);
+        uploadedFiles.push(uploaded.path);
     }
 
-    btn.disabled = false;
-    btn.innerText = "Analyze";
+    renderFiles();
 };
+
+function renderFiles(){
+    fileList.innerHTML = uploadedFiles
+        .map(f => "📎 " + f.split("/").pop())
+        .join("<br>");
+}
+
+function addMsg(role, text){
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.innerText = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+async function send(){
+
+    const input = document.getElementById("text");
+    const text = input.value.trim();
+    if(!text && uploadedFiles.length === 0) return;
+
+    input.value = "";
+
+    addMsg("user", text || "[Files attached]");
+
+    await puter.auth.getUser().catch(() => puter.auth.signIn());
+
+    // build message with files + history
+    let content = [];
+
+    // attach files
+    for(let f of uploadedFiles){
+        content.push({
+            type: "file",
+            puter_path: f
+        });
+    }
+
+    // attach text
+    content.push({
+        type: "text",
+        text: text
+    });
+
+    chatHistory.push({role:"user",content});
+
+    const stream = await puter.ai.chat(chatHistory, {
+        model: "anthropic/claude-opus-4-7",
+        stream: true
+    });
+
+    let reply = "";
+    let lastMsg = document.createElement("div");
+    lastMsg.className = "msg ai";
+    messages.appendChild(lastMsg);
+
+    for await (const chunk of stream) {
+
+        let t = "";
+
+        if (typeof chunk === "string") t = chunk;
+        else if (chunk?.text) t = chunk.text;
+        else if (chunk?.message?.content) {
+            t = Array.isArray(chunk.message.content)
+                ? chunk.message.content.map(x => x.text || "").join("")
+                : chunk.message.content;
+        }
+
+        reply += t;
+        lastMsg.innerText = reply; // 🚫 no object output
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    chatHistory.push({role:"assistant", content: reply});
+}
 
 </script>
 
