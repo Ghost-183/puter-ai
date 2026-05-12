@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Multi-File Claude Chat</title>
+    <title>Claude Opus 4-7 Chat</title>
     <script src="https://js.puter.com/v2/"></script>
 
     <style>
         body {
             margin: 0;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             background: #0f172a;
             color: white;
             display: flex;
@@ -47,6 +47,7 @@
             display: flex;
             padding: 10px;
             gap: 5px;
+            background: #1e293b;
         }
 
         input, button {
@@ -60,7 +61,6 @@
         }
 
         button {
-            background: #38bdf8;
             cursor: pointer;
         }
 
@@ -68,14 +68,9 @@
             display: none;
         }
 
-        .fileBtn {
-            background: #22c55e;
-        }
+        .fileBtn { background: #22c55e; color: white; }
 
-        .small {
-            font-size: 12px;
-            color: #aaa;
-        }
+        .small { font-size: 12px; color: #aaa; margin-top: 10px; }
     </style>
 </head>
 
@@ -85,7 +80,6 @@
     <h3>Files</h3>
     <button onclick="document.getElementById('fileInput').click()">+ Add Files</button>
     <input type="file" id="fileInput" multiple />
-
     <div id="fileList" class="small"></div>
 </div>
 
@@ -93,13 +87,12 @@
     <div id="messages"></div>
 
     <div id="inputArea">
-        <input id="text" placeholder="Type message..." />
+        <input id="text" placeholder="Type your message..." />
         <button onclick="send()">Send</button>
     </div>
 </div>
 
 <script>
-
 let chatHistory = [];
 let uploadedFiles = [];
 
@@ -113,10 +106,8 @@ fileInput.onchange = async (e) => {
             "file_" + Date.now() + "_" + file.name,
             file
         );
-
         uploadedFiles.push(uploaded.path);
     }
-
     renderFiles();
 };
 
@@ -135,35 +126,25 @@ function addMsg(role, text){
 }
 
 async function send(){
-
     const input = document.getElementById("text");
     const text = input.value.trim();
     if(!text && uploadedFiles.length === 0) return;
-
     input.value = "";
 
     addMsg("user", text || "[Files attached]");
 
     await puter.auth.getUser().catch(() => puter.auth.signIn());
 
-    // build message with files + history
+    // Build the message content
     let content = [];
 
-    // attach files
     for(let f of uploadedFiles){
-        content.push({
-            type: "file",
-            puter_path: f
-        });
+        content.push({ type: "file", puter_path: f });
     }
 
-    // attach text
-    content.push({
-        type: "text",
-        text: text
-    });
+    if(text) content.push({ type: "text", text: text });
 
-    chatHistory.push({role:"user",content});
+    chatHistory.push({ role: "user", content });
 
     const stream = await puter.ai.chat(chatHistory, {
         model: "anthropic/claude-opus-4-7",
@@ -176,7 +157,6 @@ async function send(){
     messages.appendChild(lastMsg);
 
     for await (const chunk of stream) {
-
         let t = "";
 
         if (typeof chunk === "string") t = chunk;
@@ -188,13 +168,16 @@ async function send(){
         }
 
         reply += t;
-        lastMsg.innerText = reply; // 🚫 no object output
+        lastMsg.innerText = reply;  // ✅ no [object Object]
         messages.scrollTop = messages.scrollHeight;
     }
 
-    chatHistory.push({role:"assistant", content: reply});
-}
+    chatHistory.push({ role: "assistant", content: reply });
 
+    // Clear uploaded files after sending
+    uploadedFiles = [];
+    renderFiles();
+}
 </script>
 
 </body>
