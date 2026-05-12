@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Opus Chat</title>
+
+  <title>Claude Opus 4.7</title>
 
   <script src="https://js.puter.com/v2/"></script>
 
@@ -15,27 +16,23 @@
       padding:20px;
     }
 
-    h2{
-      color:#7dd3fc;
-    }
-
     textarea{
       width:100%;
       height:120px;
       border:none;
-      border-radius:10px;
+      border-radius:12px;
       padding:12px;
-      font-size:16px;
       background:#1e293b;
       color:white;
+      font-size:16px;
     }
 
     button{
-      margin-top:10px;
       width:100%;
       padding:14px;
+      margin-top:12px;
       border:none;
-      border-radius:10px;
+      border-radius:12px;
       background:#38bdf8;
       color:black;
       font-size:16px;
@@ -47,7 +44,7 @@
       white-space:pre-wrap;
       background:#111827;
       padding:15px;
-      border-radius:10px;
+      border-radius:12px;
       line-height:1.5;
     }
   </style>
@@ -55,10 +52,11 @@
 
 <body>
 
-<h2>Claude Opus 4.7 Mobile</h2>
+<h2>Claude Opus 4.7</h2>
 
-<textarea id="prompt"
-placeholder="Ask Claude anything..."></textarea>
+<textarea
+id="prompt"
+placeholder="Type message..."></textarea>
 
 <button onclick="chat()">Send</button>
 
@@ -67,20 +65,24 @@ placeholder="Ask Claude anything..."></textarea>
 <script>
 async function chat() {
 
-  const output = document.getElementById("output");
-  const prompt = document.getElementById("prompt").value;
+  const output =
+    document.getElementById("output");
+
+  const prompt =
+    document.getElementById("prompt").value;
 
   output.innerText = "Thinking...";
 
-  // Auto login only once
-  try {
-    await puter.auth.getUser();
-  } catch {
-    await puter.auth.signIn();
-  }
-
   try {
 
+    // Login once
+    try {
+      await puter.auth.getUser();
+    } catch {
+      await puter.auth.signIn();
+    }
+
+    // CLAUDE OPUS 4.7
     const response = await puter.ai.chat(
       prompt,
       {
@@ -88,21 +90,53 @@ async function chat() {
       }
     );
 
-    // Works with most Puter response formats
-    if(response?.message?.content){
-      output.innerText = response.message.content;
-    }
-    else if(response?.text){
-      output.innerText = response.text;
-    }
-    else{
-      output.innerText =
-        JSON.stringify(response,null,2);
+    console.log(response);
+
+    // Fix object output
+    let text = "";
+
+    if (typeof response === "string") {
+      text = response;
     }
 
+    else if (response?.message?.content) {
+
+      if (Array.isArray(response.message.content)) {
+
+        text = response.message.content
+          .map(part => part.text || "")
+          .join("");
+
+      } else {
+
+        text = response.message.content;
+
+      }
+    }
+
+    else if (response?.text) {
+
+      text = response.text;
+
+    }
+
+    else {
+
+      text = JSON.stringify(
+        response,
+        null,
+        2
+      );
+    }
+
+    output.innerText = text;
+
   } catch(err) {
+
     output.innerText =
       "Error:\n" + err.message;
+
+    console.error(err);
   }
 }
 </script>
