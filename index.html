@@ -1,12 +1,111 @@
+<!DOCTYPE html>
 <html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Opus Chat</title>
+
+  <script src="https://js.puter.com/v2/"></script>
+
+  <style>
+    body{
+      background:#0f172a;
+      color:white;
+      font-family:Arial;
+      padding:20px;
+    }
+
+    h2{
+      color:#7dd3fc;
+    }
+
+    textarea{
+      width:100%;
+      height:120px;
+      border:none;
+      border-radius:10px;
+      padding:12px;
+      font-size:16px;
+      background:#1e293b;
+      color:white;
+    }
+
+    button{
+      margin-top:10px;
+      width:100%;
+      padding:14px;
+      border:none;
+      border-radius:10px;
+      background:#38bdf8;
+      color:black;
+      font-size:16px;
+      font-weight:bold;
+    }
+
+    #output{
+      margin-top:20px;
+      white-space:pre-wrap;
+      background:#111827;
+      padding:15px;
+      border-radius:10px;
+      line-height:1.5;
+    }
+  </style>
+</head>
+
 <body>
-    <script src="https://js.puter.com/v2/"></script>
-    <script>
-        puter.ai.chat("Explain quantum computing in simple terms", {
-            model: "anthropic/claude-opus-4-7"
-        }).then(response => {
-            document.body.innerHTML = response.message.content;
-        });
-    </script>
+
+<h2>Claude Opus 4.7 Mobile</h2>
+
+<textarea id="prompt"
+placeholder="Ask Claude anything..."></textarea>
+
+<button onclick="chat()">Send</button>
+
+<div id="output"></div>
+
+<script>
+async function chat() {
+
+  const output = document.getElementById("output");
+  const prompt = document.getElementById("prompt").value;
+
+  output.innerText = "Thinking...";
+
+  // Auto login only once
+  try {
+    await puter.auth.getUser();
+  } catch {
+    await puter.auth.signIn();
+  }
+
+  try {
+
+    const response = await puter.ai.chat(
+      prompt,
+      {
+        model: "claude-opus-4-7"
+      }
+    );
+
+    // Works with most Puter response formats
+    if(response?.message?.content){
+      output.innerText = response.message.content;
+    }
+    else if(response?.text){
+      output.innerText = response.text;
+    }
+    else{
+      output.innerText =
+        JSON.stringify(response,null,2);
+    }
+
+  } catch(err) {
+    output.innerText =
+      "Error:\n" + err.message;
+  }
+}
+</script>
+
 </body>
 </html>
