@@ -1,165 +1,198 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude Opus 4.7 Workspace</title>
-    <!-- Puter.js SDK -->
+    <title>Claude Opus 4.7 | Immersive</title>
     <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .chat-container { height: calc(100vh - 160px); }
-        .artifact-pane { border-left: 1px solid #e5e7eb; }
-        pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
-        .message-user { background: #f3f4f6; align-self: flex-end; }
-        .message-assistant { background: #ffffff; border: 1px solid #e5e7eb; align-self: flex-start; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0d11; color: #e2e8f0; }
+        .chat-scroll::-webkit-scrollbar { width: 5px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .artifact-pane { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .input-container { background: #1e2025; border: 1px solid #2d3139; }
+        .message-content { line-height: 1.6; }
+        pre { background: #000; padding: 1rem; border-radius: 0.75rem; margin-top: 1rem; border: 1px solid #334155; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans">
+<body class="h-screen flex overflow-hidden">
 
-    <!-- Header -->
-    <header class="flex items-center justify-between px-6 py-4 bg-white shadow-sm">
-        <div class="flex items-center gap-2">
-            <span class="text-xl font-bold text-orange-600">Claude</span>
-            <span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded">Opus 4.7</span>
-        </div>
-        <div class="text-sm text-gray-500">Puter Cloud API Interface</div>
-    </header>
-
-    <!-- Main Workspace -->
-    <main class="flex h-[calc(100vh-73px)]">
+    <!-- Workspace -->
+    <div id="main-content" class="flex-1 flex flex-col relative transition-all duration-500">
         
-        <!-- Left: Chat Pane -->
-        <section class="flex-1 flex flex-col p-4 md:p-6 max-w-3xl mx-auto w-full">
-            <div id="chat-history" class="chat-container overflow-y-auto flex flex-col gap-4 mb-4 pr-2">
-                <!-- Welcome Message -->
-                <div class="message-assistant p-4 rounded-2xl max-w-[85%]">
-                    Hello! I am Claude Opus 4.7. How can I help you today? You can attach files or ask me to write code, which I'll display in the side pane.
+        <!-- Top Navbar -->
+        <nav class="h-14 flex items-center justify-between px-6 border-b border-white/5 bg-[#0b0d11]/80 backdrop-blur-md sticky top-0 z-20">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]"></div>
+                <span class="font-medium text-sm text-slate-300">Claude 4.7 Opus</span>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-500">
+                <span>Puter Cloud Engine</span>
+            </div>
+        </nav>
+
+        <!-- Chat Feed (Full Width) -->
+        <div id="chat-feed" class="flex-1 overflow-y-auto chat-scroll flex flex-col items-center">
+            <div class="w-full max-w-4xl px-6 py-10 space-y-10" id="messages-wrapper">
+                <!-- Welcome -->
+                <div class="flex gap-6 animate-in fade-in slide-in-from-bottom-2">
+                    <div class="w-8 h-8 rounded-full bg-orange-600 flex-shrink-0 flex items-center justify-center font-bold text-xs">C</div>
+                    <div class="message-content text-slate-300 max-w-2xl">
+                        I'm Claude Opus 4.7. Send a message or drop files into the bar below to start our session.
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Input Area -->
-            <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-2">
-                <div id="file-preview" class="flex gap-2 p-2 hidden"></div>
-                <div class="flex items-end gap-2">
-                    <label class="p-3 cursor-pointer hover:bg-gray-100 rounded-xl transition">
+        <!-- Integrated Bottom UI -->
+        <footer class="w-full flex flex-col items-center pb-8 pt-2 px-6 bg-gradient-to-t from-[#0b0d11] via-[#0b0d11] to-transparent">
+            <div class="w-full max-w-3xl flex flex-col gap-2">
+                
+                <!-- File Preview Tray (visible only when files added) -->
+                <div id="file-tray" class="flex flex-wrap gap-2 px-2"></div>
+
+                <!-- Unified Input Pill -->
+                <div class="input-container rounded-[28px] p-2 flex items-end gap-2 shadow-2xl">
+                    <!-- File Attach Button -->
+                    <label class="p-3 text-slate-400 hover:text-white cursor-pointer transition flex-shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                         <input type="file" id="file-input" class="hidden" multiple>
-                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     </label>
-                    <textarea id="user-input" rows="1" class="flex-1 p-3 focus:outline-none resize-none" placeholder="Message Claude..."></textarea>
-                    <button id="send-btn" class="bg-black text-white p-3 rounded-xl hover:bg-gray-800 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path></svg>
+
+                    <!-- Text Area -->
+                    <textarea id="user-input" rows="1" placeholder="Type your prompt..." 
+                        class="w-full bg-transparent py-3 px-1 focus:outline-none resize-none text-slate-100 max-h-60 custom-scrollbar"></textarea>
+
+                    <!-- Send Button -->
+                    <button id="send-btn" class="p-3 bg-white text-black rounded-full hover:bg-slate-200 transition-all flex-shrink-0 shadow-lg disabled:opacity-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
                     </button>
                 </div>
+                <p class="text-[10px] text-center text-slate-600 mt-2">Claude can make mistakes. Check important info.</p>
             </div>
-        </section>
+        </footer>
+    </div>
 
-        <!-- Right: Side Pane (Artifacts/Preview) -->
-        <aside id="side-pane" class="hidden md:flex flex-1 flex-col bg-white artifact-pane">
-            <div class="p-4 border-b flex justify-between items-center">
-                <h2 class="font-semibold text-gray-700">Artifacts & Files</h2>
-                <button onclick="document.getElementById('side-pane').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            <div id="artifact-content" class="p-6 overflow-y-auto">
-                <div class="text-center text-gray-400 mt-20">
-                    Code, documents, and complex data will appear here side-by-side.
-                </div>
-            </div>
-        </aside>
-    </main>
+    <!-- Right Side: Artifacts/Docs -->
+    <aside id="artifact-pane" class="w-0 opacity-0 border-l border-white/5 bg-[#121418] flex flex-col relative z-30">
+        <div class="p-4 border-b border-white/5 flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-widest text-slate-500">Output Preview</span>
+            <button onclick="toggleSidePane(false)" class="p-2 hover:bg-white/5 rounded-lg text-slate-400">✕</button>
+        </div>
+        <div id="artifact-content" class="flex-1 overflow-auto p-6 text-sm text-slate-300"></div>
+    </aside>
 
     <script>
-        const chatHistory = document.getElementById('chat-history');
+        const chatFeed = document.getElementById('chat-feed');
+        const wrapper = document.getElementById('messages-wrapper');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const fileInput = document.getElementById('file-input');
+        const fileTray = document.getElementById('file-tray');
+        const artifactPane = document.getElementById('artifact-pane');
         const artifactContent = document.getElementById('artifact-content');
-        const sidePane = document.getElementById('side-pane');
 
-        let messages = [];
+        let chatHistory = [];
         let attachedFiles = [];
 
-        // Handle File Selection
-        fileInput.addEventListener('change', async (e) => {
-            const files = e.target.files;
-            if (files.length === 0) return;
-
-            // Upload files to Puter's temporary storage
-            const uploaded = await puter.fs.upload(files);
-            const fileArr = Array.isArray(uploaded) ? uploaded : [uploaded];
-            
-            fileArr.forEach(f => {
-                attachedFiles.push({ type: 'file', puter_path: f.path, name: f.name });
-                const chip = document.createElement('div');
-                chip.className = "bg-gray-100 px-3 py-1 rounded-full text-xs flex items-center gap-2 border";
-                chip.innerHTML = `<span>${f.name}</span>`;
-                document.getElementById('file-preview').classList.remove('hidden');
-                document.getElementById('file-preview').appendChild(chip);
-            });
-        });
-
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text && attachedFiles.length === 0) return;
-
-            // 1. Update UI (User Message)
-            const userMsgDiv = document.createElement('div');
-            userMsgDiv.className = "message-user p-4 rounded-2xl max-w-[85%] shadow-sm";
-            userMsgDiv.textContent = text;
-            chatHistory.appendChild(userMsgDiv);
-            
-            // Prepare message content (Multimodal)
-            const content = [];
-            if (text) content.push({ type: 'text', text: text });
-            attachedFiles.forEach(f => content.push({ type: 'file', puter_path: f.puter_path }));
-            
-            messages.push({ role: 'user', content: content });
-            
-            // Reset Input
-            userInput.value = '';
-            attachedFiles = [];
-            document.getElementById('file-preview').innerHTML = '';
-            document.getElementById('file-preview').classList.add('hidden');
-
-            // 2. Assistant Placeholder
-            const assistantMsgDiv = document.createElement('div');
-            assistantMsgDiv.className = "message-assistant p-4 rounded-2xl max-w-[85%] prose";
-            chatHistory.appendChild(assistantMsgDiv);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-
-            try {
-                // 3. Call Puter AI API (Claude Opus 4.7)
-                const response = await puter.ai.chat(messages, {
-                    model: 'claude-opus-4-7',
-                    stream: true
-                });
-
-                let fullText = '';
-                for await (const part of response) {
-                    if (part?.text) {
-                        fullText += part.text;
-                        assistantMsgDiv.innerText = fullText; // Using innerText to show raw stream
-                        chatHistory.scrollTop = chatHistory.scrollHeight;
-                        
-                        // Detect Code Blocks for Side Pane (Artifacts)
-                        if (fullText.includes('```')) {
-                            sidePane.classList.remove('hidden');
-                            const codeMatch = fullText.match(/
-```([\s\S]*?)```/);
-                            if (codeMatch) {
-                                artifactContent.innerHTML = `<pre><code>${codeMatch[1]}</code></pre>`;
-                            }
-                        }
-                    }
-                }
-                messages.push({ role: 'assistant', content: fullText });
-            } catch (err) {
-                assistantMsgDiv.innerHTML = `<span class="text-red-500">Error: ${err.message}</span>`;
+        function toggleSidePane(show) {
+            if (show) {
+                artifactPane.style.width = "40%";
+                artifactPane.style.opacity = "1";
+            } else {
+                artifactPane.style.width = "0";
+                artifactPane.style.opacity = "0";
             }
         }
 
-        sendBtn.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
+        // Handle file uploads (Puter SDK v2)
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                const uploaded = await puter.fs.upload(file);
+                attachedFiles.push({ type: 'file', puter_path: uploaded.path, name: uploaded.name });
+                
+                // Add to visible tray
+                const chip = document.createElement('div');
+                chip.className = "bg-[#2d3139] border border-white/10 px-3 py-1 rounded-full text-[11px] flex items-center gap-2 animate-in zoom-in-50";
+                chip.innerHTML = `<span>${uploaded.name}</span><button class="text-slate-500 hover:text-white">×</button>`;
+                fileTray.appendChild(chip);
+            }
+        });
+
+        // Chat logic
+        async function runChat() {
+            const text = userInput.value.trim();
+            if (!text && attachedFiles.length === 0) return;
+
+            // UI: Add User Message
+            const uDiv = document.createElement('div');
+            uDiv.className = "flex justify-end";
+            uDiv.innerHTML = `<div class="bg-[#1e2025] px-5 py-3 rounded-[22px] max-w-[80%] border border-white/5 text-slate-200">${text}</div>`;
+            wrapper.appendChild(uDiv);
+
+            // Prepare Content for Claude
+            const content = [];
+            if (text) content.push({ type: 'text', text: text });
+            attachedFiles.forEach(f => content.push({ type: 'file', puter_path: f.puter_path }));
+            chatHistory.push({ role: 'user', content: content });
+
+            // Reset UI
+            userInput.value = '';
+            fileTray.innerHTML = '';
+            attachedFiles = [];
+            userInput.style.height = 'auto';
+
+            // UI: Assistant Loading State
+            const aDiv = document.createElement('div');
+            aDiv.className = "flex gap-6";
+            aDiv.innerHTML = `<div class="w-8 h-8 rounded-full bg-orange-600 flex-shrink-0 flex items-center justify-center font-bold text-xs">C</div>
+                              <div class="message-content text-slate-300 max-w-2xl streaming-text">...</div>`;
+            wrapper.appendChild(aDiv);
+            const textTarget = aDiv.querySelector('.streaming-text');
+            chatFeed.scrollTo({ top: chatFeed.scrollHeight, behavior: 'smooth' });
+
+            try {
+                const response = await puter.ai.chat(chatHistory, { model: 'claude-opus-4-7', stream: true });
+                let fullText = "";
+
+                for await (const part of response) {
+                    if (part?.text) {
+                        fullText += part.text;
+                        textTarget.innerText = fullText;
+                        
+                        // Sidebar Detection (Artifacts)
+                        if (fullText.includes('```')) {
+                            toggleSidePane(true);
+                            const codeBlock = fullText.match(/
+```([\s\S]*?)```/);
+                            if (codeBlock) artifactContent.innerHTML = `<pre><code>${codeBlock[1]}</code></pre>`;
+                        }
+                        chatFeed.scrollTop = chatFeed.scrollHeight;
+                    }
+                }
+                chatHistory.push({ role: 'assistant', content: fullText });
+            } catch (e) {
+                textTarget.innerHTML = `<span class="text-red-400">Error: ${e.message}</span>`;
+            }
+        }
+
+        // Listeners
+        sendBtn.addEventListener('click', runChat);
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runChat();
+            }
+        });
+
+        // Auto-expand textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
     </script>
 </body>
 </html>
